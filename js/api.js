@@ -2,7 +2,7 @@
  * Módulo API para consumir el Backend REST (kiosco-app)
  */
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = window.API_BASE_URL || '/api';
 
 const API = {
   // --- PRODUCTOS ---
