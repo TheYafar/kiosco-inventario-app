@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kiosco App - Inventario y Categorías</title>
+  <meta name="description" content="Gestión Mobile-First en Modo Nocturno de productos, precios, costos, stock y grupos/categorías.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/output.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- Header Superior Limpio (Modo Nocturno) -->
+  <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 shadow-xs">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-emerald-600 flex items-center justify-center font-black text-xl text-white shadow-md shadow-emerald-600/30">
+          📦
+        </div>
+        <div>
+          <h1 class="font-black text-lg text-white leading-tight">Inventario</h1>
+          <p class="text-xs font-semibold text-emerald-400">Catálogo & Categorías</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="openProductModal()" class="h-10 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5">
+          <span>➕</span> <span class="hidden sm:inline">Nuevo Producto</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Header Search & Category Filter Slider -->
+  <div class="sticky-header-search">
+    <div class="max-w-7xl mx-auto space-y-2.5">
+      
+      <!-- Campo de Búsqueda Rápida (h-12 Nocturno) -->
+      <div class="relative w-full">
+        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-lg">🔍</span>
+        <input 
+          type="text" 
+          id="search-input" 
+          placeholder="Buscar producto por nombre o código de barra..." 
+          class="w-full h-12 pl-11 pr-4 rounded-xl border border-slate-800 bg-slate-900/90 text-white text-base font-medium placeholder-slate-500 shadow-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-none transition" 
+        />
+      </div>
+
+      <!-- Filtros Deslizables Horizontalmente (Category Pills Slider) -->
+      <div id="inv-category-pills" class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 text-xs">
+        <button class="inv-cat-pill active h-10 px-4 rounded-xl font-bold bg-emerald-600 text-white shrink-0 shadow-xs transition" data-category="all">
+          ✨ Todos
+        </button>
+        <!-- Categorías dinámicas por JS -->
+      </div>
+
+      <!-- Filtro Secundario por Estado de Stock & Acciones Rápidas -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+        <select id="filter-stock" class="h-10 px-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <option value="all">Todos los Estados de Stock</option>
+          <option value="low">⚠️ Stock Bajo (&le; Mínimo)</option>
+          <option value="out">🚨 Agotados (0)</option>
+          <option value="ok">✓ Stock Normal</option>
+        </select>
+
+        <!-- Menú de Acciones (Botones Táctiles Nocturnos) -->
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <button onclick="openCategoryModal()" class="h-10 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs transition flex items-center gap-1">
+            <span>📁</span> <span class="hidden xs:inline">Categorías</span>
+          </button>
+          <button onclick="openImportModal()" class="h-10 px-3 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-800/60 font-bold text-xs transition flex items-center gap-1">
+            <span>📥</span> Importar
+          </button>
+          <button onclick="exportProductsCSV()" class="h-10 px-3 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/60 font-bold text-xs transition flex items-center gap-1">
+            <span>📤</span> Exportar
+          </button>
+          <button onclick="openClearModal()" class="h-10 px-3 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 font-bold text-xs transition flex items-center gap-1">
+            <span>🗑️</span> Vaciar
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Contenido Principal -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-4 space-y-4">
+    
+    <!-- Resumen rápido de conteo -->
+    <div class="flex items-center justify-between text-xs font-bold text-slate-400 px-1">
+      <p>Productos registrados: <strong id="inv-total-count" class="text-white">0</strong></p>
+      <p class="text-amber-400">Stock crítico: <strong id="inv-low-count" class="text-amber-300">0</strong></p>
+    </div>
+
+    <!-- Lista de Productos en Tarjetas Apiladas (Cards) para Móvil -->
+    <div id="products-cards-container" class="space-y-3">
+      <!-- Carga dinámica por inventario.js -->
+    </div>
+
+  </main>
+
+  <!-- MODAL: AGREGAR / EDITAR PRODUCTO -->
+  <div id="product-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="card-warm w-full max-w-xl rounded-3xl p-5 sm:p-6 shadow-2xl modal-fadeIn border border-slate-800">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <h3 id="product-modal-title" class="text-xl font-black text-white flex items-center gap-2">
+          ➕ Nuevo Producto
+        </h3>
+        <button onclick="closeProductModal()" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:text-white font-bold text-lg flex items-center justify-center">✕</button>
+      </div>
+
+      <form id="product-form" class="space-y-4">
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Nombre del Producto *</label>
+            <input type="text" id="prod-name" required placeholder="Ej. Coca Cola 500ml" class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 text-white text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Código de Barras / SKU</label>
+            <input type="text" id="prod-barcode" placeholder="Ej. 7791234567890" class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 text-white text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Categoría / Grupo</label>
+            <select id="prod-category" class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 text-slate-200 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              <option value="">Sin Categoría</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Unidad de Medida</label>
+            <input type="text" id="prod-unit" placeholder="unidades, kg, litros..." value="unidades" class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 text-white text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Descripción corta</label>
+          <input type="text" id="prod-description" placeholder="Detalles adicionales del producto" class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 text-white text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Precio Venta ($) *</label>
+            <input type="number" step="0.01" id="prod-price" required min="0" placeholder="0.00" class="w-full h-12 px-3 rounded-xl border border-slate-700 bg-slate-900 text-emerald-400 font-extrabold text-base focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Costo ($) *</label>
+            <input type="number" step="0.01" id="prod-cost" required min="0" placeholder="0.00" class="w-full h-12 px-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 font-bold text-base focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Stock Inicial *</label>
+            <input type="number" id="prod-stock" required min="0" value="0" class="w-full h-12 px-3 rounded-xl border border-slate-700 bg-slate-900 text-white font-extrabold text-base focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Stock Mínimo *</label>
+            <input type="number" id="prod-min-stock" required min="1" value="5" class="w-full h-12 px-3 rounded-xl border border-slate-700 bg-slate-900 text-amber-400 font-extrabold text-base focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 border-t border-slate-800 pt-4 mt-4">
+          <button type="button" onclick="closeProductModal()" class="h-12 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition">
+            Cancelar
+          </button>
+          <button type="submit" class="h-12 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-md transition">
+            Guardar Producto
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: GESTIÓN DE CATEGORÍAS -->
+  <div id="category-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="card-warm w-full max-w-2xl rounded-3xl p-5 sm:p-6 shadow-2xl modal-fadeIn border border-slate-800">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-xl font-black text-white flex items-center gap-2">
+          📁 Administración de Categorías / Grupos
+        </h3>
+        <button onclick="closeCategoryModal()" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:text-white font-bold text-lg flex items-center justify-center">✕</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        
+        <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+          <h4 id="category-form-title" class="font-bold text-sm text-emerald-400">➕ Agregar Nueva Categoría</h4>
+
+          <form id="category-form" class="space-y-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">Nombre *</label>
+              <input type="text" id="cat-name" required placeholder="Ej. Bebidas Energizantes" class="w-full h-12 px-3.5 rounded-xl border border-slate-700 bg-slate-900 text-white text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">Descripción</label>
+              <input type="text" id="cat-description" placeholder="Breve descripción del grupo" class="w-full h-12 px-3.5 rounded-xl border border-slate-700 bg-slate-900 text-white text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">Color Distintivo</label>
+              <div class="flex items-center gap-3">
+                <input type="color" id="cat-color" value="#10b981" class="w-12 h-12 rounded-xl bg-transparent border-0 cursor-pointer" />
+                <span class="text-xs font-medium text-slate-400">Color distintivo de la etiqueta</span>
+              </div>
+            </div>
+
+            <div class="pt-2">
+              <button type="submit" id="category-submit-btn" class="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition">
+                Guardar Categoría
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-bold text-sm text-slate-300">Categorías Existentes</h4>
+          <div id="categories-list" class="space-y-2 max-h-[280px] overflow-y-auto custom-scrollbar pr-1">
+            <!-- Carga por inventario.js -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: IMPORTACIÓN MASIVA DESDE CSV -->
+  <div id="import-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="card-warm w-full max-w-2xl rounded-3xl p-5 sm:p-6 shadow-2xl modal-fadeIn border border-slate-800">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-xl font-black text-white flex items-center gap-2">
+          <span>📥</span> Cargar Inventario desde CSV
+        </h3>
+        <button onclick="closeImportModal()" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:text-white font-bold text-lg flex items-center justify-center">✕</button>
+      </div>
+
+      <div class="space-y-4">
+        <p class="text-xs font-medium text-slate-300">
+          Sube un archivo <strong class="text-cyan-400">.CSV</strong> con la lista de productos de tu tienda.
+        </p>
+
+        <div class="flex flex-wrap items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800 gap-2">
+          <div class="text-xs text-slate-400">
+            Columnas: <span class="font-mono text-slate-200">Codigo_Barras, Nombre, Descripcion, Categoria, Precio_Venta, Costo, Stock, Stock_Minimo</span>
+          </div>
+          <button onclick="downloadCsvTemplate()" class="h-10 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-800/60 font-bold text-xs transition flex items-center gap-1 shrink-0">
+            <span>📄</span> Plantilla
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label class="flex items-start gap-2.5 p-3 rounded-2xl bg-slate-900 border-2 border-emerald-500 cursor-pointer">
+            <input type="radio" name="import-mode" value="merge" checked class="mt-0.5 text-emerald-500" />
+            <div>
+              <div class="text-xs font-bold text-white">Combinar / Actualizar</div>
+              <div class="text-[11px] text-slate-400">Agrega productos nuevos y actualiza por código.</div>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-2.5 p-3 rounded-2xl bg-slate-900 border border-slate-800 cursor-pointer">
+            <input type="radio" name="import-mode" value="replace" class="mt-0.5 text-rose-500" />
+            <div>
+              <div class="text-xs font-bold text-rose-400">Reemplazar Todo</div>
+              <div class="text-[11px] text-slate-400">Borra el catálogo actual y sube este archivo.</div>
+            </div>
+          </label>
+        </div>
+
+        <div id="drop-zone" class="border-2 border-dashed border-slate-700 hover:border-cyan-400 bg-slate-900/60 rounded-2xl p-6 text-center cursor-pointer transition">
+          <input type="file" id="csv-file-input" accept=".csv,.txt" class="hidden" onchange="handleFileSelect(event)" />
+          <span class="text-3xl block mb-1">📄</span>
+          <p class="text-xs font-bold text-white">Arrastra tu archivo CSV aquí o <span class="text-cyan-400 underline">haz clic aquí</span></p>
+        </div>
+
+        <div id="import-preview-container" class="hidden space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-emerald-400">✓ Productos detectados: <strong id="preview-count" class="text-white ml-1">0</strong></span>
+            <span id="preview-filename" class="text-slate-400 font-mono text-[11px]"></span>
+          </div>
+          <div class="max-h-36 overflow-y-auto custom-scrollbar border border-slate-800 rounded-xl bg-slate-900">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-950 text-slate-400 sticky top-0">
+                <tr>
+                  <th class="p-2">Código</th>
+                  <th class="p-2">Nombre</th>
+                  <th class="p-2 text-right">Precio</th>
+                  <th class="p-2 text-center">Stock</th>
+                </tr>
+              </thead>
+              <tbody id="preview-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 border-t border-slate-800 pt-4">
+          <button type="button" onclick="closeImportModal()" class="h-12 px-5 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm">Cancelar</button>
+          <button type="button" id="btn-process-import" disabled onclick="submitImport()" class="h-12 px-6 rounded-xl bg-cyan-600 text-white font-bold text-sm shadow-md disabled:opacity-40">Confirmar e Importar</button>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: VACIAR O RESETEAR INVENTARIO -->
+  <div id="clear-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="card-warm w-full max-w-lg rounded-3xl p-5 sm:p-6 shadow-2xl modal-fadeIn border-2 border-rose-900/40">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-xl font-black text-rose-400 flex items-center gap-2">
+          <span>⚠️</span> Vaciar o Resetear Inventario
+        </h3>
+        <button onclick="closeClearModal()" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 font-bold text-lg flex items-center justify-center">✕</button>
+      </div>
+
+      <div class="space-y-4">
+        <div class="space-y-3">
+          <label class="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-900 border border-slate-800 cursor-pointer">
+            <input type="radio" name="clear-action-type" value="reset_stock" checked class="mt-1 text-amber-500" />
+            <div>
+              <div class="text-xs font-bold text-amber-400">Poner Stock de todos los productos a 0</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Conserva catálogo y categorías pero pone existencias en 0.</div>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-900 border border-slate-800 cursor-pointer">
+            <input type="radio" name="clear-action-type" value="clear_all" class="mt-1 text-rose-500" />
+            <div>
+              <div class="text-xs font-bold text-rose-400">Vaciar todo el Inventario (Eliminar Productos)</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Elimina completamente todos los productos guardados.</div>
+            </div>
+          </label>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Escribe <span class="font-bold text-rose-400">CONFIRMAR</span> para proceder:</label>
+          <input type="text" id="clear-confirm-input" placeholder="Escribe CONFIRMAR aquí" class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 font-bold text-sm text-white focus:ring-2 focus:ring-rose-500 focus:outline-none" />
+        </div>
+
+        <div class="flex items-center justify-end gap-3 border-t border-slate-800 pt-4">
+          <button type="button" onclick="closeClearModal()" class="h-12 px-5 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm">Cancelar</button>
+          <button type="button" onclick="submitClearInventory()" class="h-12 px-6 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm shadow-md">Ejecutar Reseteo</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- NAVEGACIÓN INFERIOR FIJA (4 PESTAÑAS: INVENTARIO, FIADOS, DEVOLUCIONES, ALERTAS) -->
+  <nav class="bottom-nav-fixed">
+    <a href="inventario.html" class="bottom-nav-item active">
+      <div class="nav-icon-wrapper">📦</div>
+      <span>Inventario</span>
+    </a>
+    <a href="fiados.html" class="bottom-nav-item">
+      <div class="nav-icon-wrapper">💳</div>
+      <span>Fiados</span>
+    </a>
+    <a href="devoluciones.html" class="bottom-nav-item">
+      <div class="nav-icon-wrapper">🔄</div>
+      <span>Devoluciones</span>
+    </a>
+    <a href="alertas.html" class="bottom-nav-item">
+      <div class="nav-icon-wrapper relative">
+        🚨
+        <span id="nav-alert-count" class="hidden absolute -top-1 -right-1.5 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center animate-pulse">0</span>
+      </div>
+      <span>Alertas</span>
+    </a>
+  </nav>
+
+  <script src="js/api.js"></script>
+  <script src="js/inventario.js"></script>
+</body>
+</html>
