@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kiosco App - Registro de Devoluciones</title>
+  <meta name="description" content="Gestión Mobile-First de devoluciones, reembolsos y datos bancarios de clientes.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/output.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- Header Superior Limpio (Modo Nocturno) -->
+  <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 shadow-xs">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="inventario.html" class="w-10 h-10 rounded-2xl bg-cyan-600 flex items-center justify-center font-black text-xl text-white shadow-md shadow-cyan-600/30">
+          🔄
+        </a>
+        <div>
+          <h1 class="font-black text-lg text-white leading-tight">Devoluciones</h1>
+          <p class="text-xs font-semibold text-cyan-400">Reembolsos & Datos Bancarios</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="openDevolucionModal()" class="h-10 px-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white font-bold text-xs shadow-xs transition flex items-center gap-1">
+          <span>➕</span> <span class="hidden sm:inline">Nueva Devolución</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Header Search & Filter Slider -->
+  <div class="sticky-header-search">
+    <div class="max-w-7xl mx-auto space-y-2.5">
+      
+      <!-- Campo de Búsqueda Rápida de Devolución -->
+      <div class="relative w-full">
+        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-lg">🔍</span>
+        <input 
+          type="text" 
+          id="search-devolucion-input" 
+          placeholder="Buscar por nombre, teléfono, cédula o banco..." 
+          class="w-full h-12 pl-11 pr-4 rounded-xl border border-slate-800 bg-slate-900/90 text-white text-base font-medium placeholder-slate-500 shadow-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none transition" 
+        />
+      </div>
+
+      <!-- Filtros de Estado -->
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div id="devolucion-status-pills" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs">
+          <button class="dev-pill active h-10 px-3.5 rounded-xl font-bold bg-cyan-600 text-white shrink-0 shadow-xs transition" data-estado="TODAS">
+            ✨ Todas
+          </button>
+          <button class="dev-pill h-10 px-3.5 rounded-xl font-bold bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800 shrink-0 shadow-xs transition" data-estado="PENDIENTE">
+            ⌛ Pendientes
+          </button>
+          <button class="dev-pill h-10 px-3.5 rounded-xl font-bold bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800 shrink-0 shadow-xs transition" data-estado="PROCESADA">
+            ✓ Procesadas
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Contenido Principal -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-4 space-y-4">
+    
+    <!-- Tarjetas Métricas Resumen -->
+    <div class="grid grid-cols-2 gap-3">
+      <div class="card-warm p-4 border-l-4 border-l-amber-500">
+        <p class="text-[11px] text-slate-400 font-bold uppercase">Monto Pendiente Reembolso</p>
+        <p id="summary-total-devolucion" class="text-2xl sm:text-3xl font-black text-amber-400 mt-0.5">$0.00</p>
+      </div>
+
+      <div class="card-warm p-4 border-l-4 border-l-emerald-500">
+        <p class="text-[11px] text-slate-400 font-bold uppercase">Devoluciones Procesadas</p>
+        <p id="summary-procesadas-count" class="text-2xl sm:text-3xl font-black text-emerald-400 mt-0.5">0</p>
+      </div>
+    </div>
+
+    <!-- Lista de Tarjetas de Devoluciones -->
+    <div id="devoluciones-list-container" class="space-y-3">
+      <!-- Carga dinámica por devoluciones.js -->
+    </div>
+
+  </main>
+
+  <!-- MODAL: REGISTRAR NUEVA DEVOLUCIÓN (MODO NOCTURNO) -->
+  <div id="devolucion-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="card-warm w-full max-w-lg rounded-3xl p-5 sm:p-6 shadow-2xl modal-fadeIn border border-slate-800">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-xl font-black text-white flex items-center gap-2">
+          🔄 Nueva Devolución
+        </h3>
+        <button onclick="closeDevolucionModal()" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-400 hover:text-white font-bold text-lg flex items-center justify-center">✕</button>
+      </div>
+
+      <form id="devolucion-form" class="space-y-4">
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Nombre Completo del Cliente *</label>
+            <input type="text" id="dev-nombre" required placeholder="Ej. Maria Pérez" class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 text-white text-sm font-medium focus:ring-2 focus:ring-cyan-500 focus:outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Teléfono *</label>
+            <input type="text" id="dev-telefono" required placeholder="Ej. 11-9876-5432" class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 text-white text-sm font-mono focus:ring-2 focus:ring-cyan-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Banco / Entidad Financiera *</label>
+            <input type="text" id="dev-banco" required placeholder="Ej. Banesco, Mercantil, Zelle..." class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 text-white text-sm font-semibold focus:ring-2 focus:ring-cyan-500 focus:outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Cédula / Documento *</label>
+            <input type="text" id="dev-cedula" required placeholder="Ej. V-18.456.789" class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 text-white text-sm font-mono focus:ring-2 focus:ring-cyan-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Monto a Devolver ($) *</label>
+          <input type="number" step="0.01" id="dev-monto" required min="0.01" placeholder="Ej. 1500.00" class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 text-emerald-400 font-extrabold text-base focus:ring-2 focus:ring-cyan-500 focus:outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Motivo / Detalle de la Devolución</label>
+          <input type="text" id="dev-motivo" placeholder="Ej. Producto defectuoso o cambio por vencimiento" class="w-full h-12 px-4 rounded-xl border border-slate-700 bg-slate-900 text-white text-sm font-medium focus:ring-2 focus:ring-cyan-500 focus:outline-none" />
+        </div>
+
+        <div class="flex items-center justify-end gap-3 border-t border-slate-800 pt-4 mt-4">
+          <button type="button" onclick="closeDevolucionModal()" class="h-12 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition">
+            Cancelar
+          </button>
+          <button type="submit" class="h-12 px-6 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-sm shadow-md transition">
+            Guardar Devolución
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- NAVEGACIÓN INFERIOR FIJA (4 PESTAÑAS) -->
+  <nav class="bottom-nav-fixed">
+    <a href="inventario.html" class="bottom-nav-item">
+      <div class="nav-icon-wrapper">📦</div>
+      <span>Inventario</span>
+    </a>
+    <a href="fiados.html" class="bottom-nav-item">
+      <div class="nav-icon-wrapper">💳</div>
+      <span>Fiados</span>
+    </a>
+    <a href="devoluciones.html" class="bottom-nav-item active">
+      <div class="nav-icon-wrapper">🔄</div>
+      <span>Devoluciones</span>
+    </a>
+    <a href="alertas.html" class="bottom-nav-item">
+      <div class="nav-icon-wrapper relative">
+        🚨
+        <span id="nav-alert-count" class="hidden absolute -top-1 -right-1.5 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center animate-pulse">0</span>
+      </div>
+      <span>Alertas</span>
+    </a>
+  </nav>
+
+  <script src="js/api.js"></script>
+  <script src="js/devoluciones.js"></script>
+</body>
+</html>
